@@ -1,17 +1,17 @@
 streamlit
 python-dotenv
-langchain-community  # For WebBaseLoader, FAISS
-langchain-text-splitters
+
+# Core LangChain & RAG Dependencies
+langchain
 langchain-core
-langchain-chains
-langchain-prompts
-fastembed            # For FastEmbedEmbeddings
-# FIX: Required for ChatGroq
+langchain-community
 langchain-groq
-# FIX: Required for WebBaseLoader to parse HTML (previously identified fix)
+langchain-text-splitters
+fastembed
 beautifulsoup4
 lxml
-# Optional dependencies (if you want voice/TTS/translation features to work)
+
+# Optional/Conditional Dependencies
 SpeechRecognition
 gTTS
 deep-translator
