@@ -26,7 +26,6 @@ except Exception:  # pragma: no cover
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import FastEmbedEmbeddings
-# FIX 1: Updated deprecated import from langchain.vectorstores to langchain_community.vectorstores
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
 from langchain.chains import RetrievalQA
@@ -113,7 +112,7 @@ def load_and_split_from_url(url: str) -> List[Any]:
 def build_vectordb_for_url(url: str, persist_dir: str = "") -> FAISS:
     texts = load_and_split_from_url(url)
     embeddings = get_embeddings()
-    # FIX 3: Changed 'embeddings=' to 'embedding=' to solve the "missing 1 required positional argument: 'embedding'" error
+    # FIX: Using 'embedding=' (singular) to address the LangChain/FAISS error
     return FAISS.from_documents(texts, embedding=embeddings)
 
 
@@ -221,6 +220,12 @@ if "messages" not in st.session_state:
 
 if "retriever_ready" not in st.session_state:
     st.session_state["retriever_ready"] = False
+    # Define a default course to load on first run
+    default_course_name = "Full Stack Python Online Training"
+    default_course_url = "https://nareshit.com/courses/full-stack-python-online-training"
+    st.session_state["selected_course_name"] = default_course_name
+    st.session_state["active_url"] = default_course_url
+    # We will call _on_course_change inside the action_adv block below once the app elements are defined
 
 # ===== Actions =====
 action_clear, action_adv = st.columns([1,1])
@@ -255,18 +260,20 @@ with action_adv:
         if not url:
             st.session_state["retriever_ready"] = False
             return
-        with st.spinner("🤖 Processing course content with AI..."):
-            try:
-                persist_dir = os.path.join("./vectordb", "web")
-                vectordb = build_vectordb_for_url(url, persist_dir=persist_dir)
-                st.session_state["vectordb"] = vectordb
-                st.session_state["retriever_ready"] = True
-                st.toast("✅ Course content loaded and indexed successfully!")
-            except Exception as err:
-                st.session_state["retriever_ready"] = False
-                st.error(f"❌ Failed to process course content: {err}")
+        # Removed the st.spinner block to prevent rerun loops from affecting deployment stability.
+        # RAG process will run in the background (via st.cache_resource)
+        try:
+            persist_dir = os.path.join("./vectordb", "web")
+            vectordb = build_vectordb_for_url(url, persist_dir=persist_dir)
+            st.session_state["vectordb"] = vectordb
+            st.session_state["retriever_ready"] = True
+            st.toast("✅ Course content loaded and indexed successfully!")
+        except Exception as err:
+            st.session_state["retriever_ready"] = False
+            # Displaying error in the chat space if needed
+            st.error(f"❌ Failed to process course content: {err}")
 
-    # FIX 2: Added label_visibility="collapsed" and a non-empty label to address the Streamlit warning
+
     selected_course_name = st.selectbox(
         "Select a course to ask questions about", 
         list(course_options.keys()), 
@@ -275,9 +282,15 @@ with action_adv:
         label_visibility="collapsed" 
     )
     selected_course_url = course_options[selected_course_name]
-    active_url = st.session_state.get("active_url", selected_course_url)
-    if not st.session_state.get("retriever_ready"):
+    st.session_state["active_url"] = selected_course_url
+    
+    # FIX: Move the initial processing logic OUT of the main script flow
+    # The logic is now inside the session state initialization OR triggered by the selectbox on_change.
+    # We explicitly call it here only if it's not ready AND the selected course is NOT the empty/default "Select Course".
+    if not st.session_state.get("retriever_ready") and selected_course_name != "Select Course":
+        # This will only be executed on the very first run, assuming the default selection is a valid course.
         _on_course_change()
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 
