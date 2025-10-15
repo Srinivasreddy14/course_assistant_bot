@@ -1,12 +1,17 @@
 streamlit
 python-dotenv
-speechrecognition
+langchain-community  # For WebBaseLoader, FAISS
+langchain-text-splitters
+langchain-core
+langchain-chains
+langchain-prompts
+fastembed            # For FastEmbedEmbeddings
+# FIX: Required for ChatGroq
+langchain-groq
+# FIX: Required for WebBaseLoader to parse HTML (previously identified fix)
+beautifulsoup4
+lxml
+# Optional dependencies (if you want voice/TTS/translation features to work)
+SpeechRecognition
 gTTS
 deep-translator
-langchain-community  # For WebBaseLoader and FAISS
-fastembed            # For FastEmbedEmbeddings
-groq                 # For ChatGroq
-# New dependency for WebBaseLoader (fixes the 'no module named bs4' error)
-beautifulsoup4
-# Recommended addition for better HTML parsing performance
-lxml
