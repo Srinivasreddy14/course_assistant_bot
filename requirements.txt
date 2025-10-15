@@ -1,25 +1,12 @@
-# ---- Core Web Framework ----
-streamlit>=1.37.0
-python-dotenv>=1.0.1
-pandas>=2.2.0
-Pillow>=10.3.0
-requests>=2.32.3
-
-# ---- LangChain & Vector DB ----
-faiss-cpu>=1.8.0
-langchain>=0.2.10
-langchain-core>=0.2.10
-langchain-community>=0.2.10
-langchain-groq>=0.1.4
-langchain-openai>=0.1.9
-openai>=1.35.0
-tiktoken>=0.7.0
-
-# ---- Speech & Audio ----
-gTTS>=2.5.1
-SpeechRecognition>=3.10.0
-
-# ---- Utility ----
-aiohttp>=3.10.2
-typing_extensions>=4.12.2
-
+streamlit
+python-dotenv
+speechrecognition
+gTTS
+deep-translator
+langchain-community  # For WebBaseLoader and FAISS
+fastembed            # For FastEmbedEmbeddings
+groq                 # For ChatGroq
+# New dependency for WebBaseLoader (fixes the 'no module named bs4' error)
+beautifulsoup4
+# Recommended addition for better HTML parsing performance
+lxml
