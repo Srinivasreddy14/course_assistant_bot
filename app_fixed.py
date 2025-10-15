@@ -26,7 +26,8 @@ except Exception:  # pragma: no cover
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain.vectorstores import FAISS
+# FIX 1: Changed import from langchain.vectorstores to langchain_community.vectorstores
+from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
@@ -265,7 +266,14 @@ with action_adv:
                 st.session_state["retriever_ready"] = False
                 st.error(f"❌ Failed to process course content: {err}")
 
-    selected_course_name = st.selectbox("", list(course_options.keys()), key="selected_course_name", on_change=_on_course_change)
+    # FIX 2: Added label_visibility="collapsed" to st.selectbox to address the Streamlit warning
+    selected_course_name = st.selectbox(
+        "Select a course to ask questions about", # Non-empty label
+        list(course_options.keys()), 
+        key="selected_course_name", 
+        on_change=_on_course_change,
+        label_visibility="collapsed" # Hides the label but satisfies the requirement for a non-empty label
+    )
     selected_course_url = course_options[selected_course_name]
     active_url = st.session_state.get("active_url", selected_course_url)
     if not st.session_state.get("retriever_ready"):
