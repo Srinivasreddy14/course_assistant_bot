@@ -26,7 +26,7 @@ except Exception:  # pragma: no cover
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import FastEmbedEmbeddings
-# FIX 1: Changed import from langchain.vectorstores to langchain_community.vectorstores
+# FIX 1: Updated deprecated import from langchain.vectorstores to langchain_community.vectorstores
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
 from langchain.chains import RetrievalQA
@@ -113,8 +113,8 @@ def load_and_split_from_url(url: str) -> List[Any]:
 def build_vectordb_for_url(url: str, persist_dir: str = "") -> FAISS:
     texts = load_and_split_from_url(url)
     embeddings = get_embeddings()
-    # Use the correct keyword 'embeddings' accepted by LangChain's FAISS helper
-    return FAISS.from_documents(texts, embeddings=embeddings)
+    # FIX 3: Changed 'embeddings=' to 'embedding=' to solve the "missing 1 required positional argument: 'embedding'" error
+    return FAISS.from_documents(texts, embedding=embeddings)
 
 
 def tts_to_audio_tag(text: str, lang_code: str) -> str:
@@ -266,13 +266,13 @@ with action_adv:
                 st.session_state["retriever_ready"] = False
                 st.error(f"❌ Failed to process course content: {err}")
 
-    # FIX 2: Added label_visibility="collapsed" to st.selectbox to address the Streamlit warning
+    # FIX 2: Added label_visibility="collapsed" and a non-empty label to address the Streamlit warning
     selected_course_name = st.selectbox(
-        "Select a course to ask questions about", # Non-empty label
+        "Select a course to ask questions about", 
         list(course_options.keys()), 
         key="selected_course_name", 
         on_change=_on_course_change,
-        label_visibility="collapsed" # Hides the label but satisfies the requirement for a non-empty label
+        label_visibility="collapsed" 
     )
     selected_course_url = course_options[selected_course_name]
     active_url = st.session_state.get("active_url", selected_course_url)
