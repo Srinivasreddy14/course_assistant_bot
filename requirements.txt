@@ -1,0 +1,22 @@
+# --- Core Dependencies ---
+streamlit>=1.36.0
+python-dotenv>=1.0.1
+
+# --- LangChain + Google Generative AI ---
+langchain>=0.2.14
+langchain-community>=0.2.11
+langchain-google-genai>=1.0.6
+faiss-cpu>=1.8.0
+
+# --- Web Scraping / Document Loading ---
+beautifulsoup4>=4.12.3
+requests>=2.31.0
+
+# --- Optional Voice / TTS / Translation ---
+SpeechRecognition>=3.10.4
+gTTS>=2.5.1
+deep-translator>=1.11.4
+pydub>=0.25.1
+
+# --- Utilities ---
+tqdm>=4.66.4
