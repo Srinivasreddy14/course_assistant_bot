@@ -112,7 +112,7 @@ def load_and_split_from_url(url: str) -> List[Any]:
 def build_vectordb_for_url(url: str, persist_dir: str = "") -> FAISS:
     texts = load_and_split_from_url(url)
     embeddings = get_embeddings()
-    # FIX: Using 'embedding=' (singular) to address the LangChain/FAISS error
+    # Using 'embedding=' (singular)
     return FAISS.from_documents(texts, embedding=embeddings)
 
 
@@ -215,17 +215,68 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ===== Session State =====
+# Define course options early for use in initialization
+course_options: Dict[str, str] = {
+    "Select Course":"",
+    "Full Stack Python Online Training": "https://nareshit.com/courses/full-stack-python-online-training",
+    "Full Stack Data Science & AI": "https://nareshit.com/courses/full-stack-data-science-ai-online-training",
+    "Full Stack Software Testing" : "https://nareshit.com/courses/full-stack-software-testing-online-training",
+    "UI Full Stack Web Development With React":"https://nareshit.com/courses/ui-full-stack-web-development-with-react-online-training",
+    "Full Stack Dot Net Core":"https://nareshit.com/courses/full-stack-dot-net-core-online-training",
+    "Full Stack Python":"https://nareshit.com/courses/full-stack-python-online-training",
+    "Full Stack Java":"https://nareshit.com/courses/full-stack-java-online-training",
+    "Spring Boot MicroServices":"https://nareshit.com/courses/spring-boot-microservices-online-training",
+    "Django":"https://nareshit.com/courses/django-online-training",
+    "Tableau":"https://nareshit.com/courses/tableau-online-training",
+    "Power BI":"https://nareshit.com/courses/power-bi-online-training",
+    "MySQL":"https://nareshit.com/courses/mysql-online-training"
+}
+
 if "messages" not in st.session_state:
     st.session_state["messages"] = []  # list of dicts {role: "user"|"assistant", content: str}
 
 if "retriever_ready" not in st.session_state:
     st.session_state["retriever_ready"] = False
-    # Define a default course to load on first run
+    
+    # 1. Set a default course for the first run
     default_course_name = "Full Stack Python Online Training"
-    default_course_url = "https://nareshit.com/courses/full-stack-python-online-training"
+    default_course_url = course_options[default_course_name]
     st.session_state["selected_course_name"] = default_course_name
     st.session_state["active_url"] = default_course_url
-    # We will call _on_course_change inside the action_adv block below once the app elements are defined
+    
+    # 2. Start the heavy RAG initialization immediately on the first script run (ONLY ONCE)
+    if default_course_url:
+        with st.spinner(f"🤖 Processing initial course content: {default_course_name} (This may take a minute on first run)..."):
+            try:
+                # Use the core helper function
+                vectordb = build_vectordb_for_url(default_course_url)
+                st.session_state["vectordb"] = vectordb
+                st.session_state["retriever_ready"] = True
+                st.toast("✅ Default course content loaded and indexed successfully! Start chatting.")
+            except Exception as err:
+                st.session_state["retriever_ready"] = False
+                st.error(f"❌ Failed to process default course content: {err}")
+
+# Helper function for selectbox (must be defined after state check, but needs to be outside the 'with action_adv' block for scope)
+def _on_course_change():
+    name = st.session_state.get("selected_course_name")
+    url = course_options.get(name, "")
+    st.session_state["active_url"] = url
+    if not url:
+        st.session_state["retriever_ready"] = False
+        st.session_state["vectordb"] = None
+        return
+    with st.spinner("🤖 Processing course content with AI..."):
+        try:
+            persist_dir = os.path.join("./vectordb", "web")
+            vectordb = build_vectordb_for_url(url, persist_dir=persist_dir)
+            st.session_state["vectordb"] = vectordb
+            st.session_state["retriever_ready"] = True
+            st.toast("✅ Course content loaded and indexed successfully! Start chatting.")
+        except Exception as err:
+            st.session_state["retriever_ready"] = False
+            st.error(f"❌ Failed to process course content: {err}")
+
 
 # ===== Actions =====
 action_clear, action_adv = st.columns([1,1])
@@ -237,59 +288,20 @@ with action_clear:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with action_adv:
-    course_options: Dict[str, str] = {
-        "Select Course":"",
-        "Full Stack Python Online Training": "https://nareshit.com/courses/full-stack-python-online-training",
-        "Full Stack Data Science & AI": "https://nareshit.com/courses/full-stack-data-science-ai-online-training",
-        "Full Stack Software Testing" : "https://nareshit.com/courses/full-stack-software-testing-online-training",
-        "UI Full Stack Web Development With React":"https://nareshit.com/courses/ui-full-stack-web-development-with-react-online-training",
-        "Full Stack Dot Net Core":"https://nareshit.com/courses/full-stack-dot-net-core-online-training",
-        "Full Stack Python":"https://nareshit.com/courses/full-stack-python-online-training",
-        "Full Stack Java":"https://nareshit.com/courses/full-stack-java-online-training",
-        "Spring Boot MicroServices":"https://nareshit.com/courses/spring-boot-microservices-online-training",
-        "Django":"https://nareshit.com/courses/django-online-training",
-        "Tableau":"https://nareshit.com/courses/tableau-online-training",
-        "Power BI":"https://nareshit.com/courses/power-bi-online-training",
-        "MySQL":"https://nareshit.com/courses/mysql-online-training"
-    }
-
-    def _on_course_change():
-        name = st.session_state.get("selected_course_name")
-        url = course_options.get(name, "")
-        st.session_state["active_url"] = url
-        if not url:
-            st.session_state["retriever_ready"] = False
-            return
-        # Removed the st.spinner block to prevent rerun loops from affecting deployment stability.
-        # RAG process will run in the background (via st.cache_resource)
-        try:
-            persist_dir = os.path.join("./vectordb", "web")
-            vectordb = build_vectordb_for_url(url, persist_dir=persist_dir)
-            st.session_state["vectordb"] = vectordb
-            st.session_state["retriever_ready"] = True
-            st.toast("✅ Course content loaded and indexed successfully!")
-        except Exception as err:
-            st.session_state["retriever_ready"] = False
-            # Displaying error in the chat space if needed
-            st.error(f"❌ Failed to process course content: {err}")
-
+    # Use the session state value for the default index selection
+    initial_index = list(course_options.keys()).index(st.session_state.get("selected_course_name", "Select Course"))
 
     selected_course_name = st.selectbox(
         "Select a course to ask questions about", 
         list(course_options.keys()), 
         key="selected_course_name", 
+        index=initial_index, # Ensure the selectbox shows the course that was just loaded
         on_change=_on_course_change,
         label_visibility="collapsed" 
     )
-    selected_course_url = course_options[selected_course_name]
-    st.session_state["active_url"] = selected_course_url
     
-    # FIX: Move the initial processing logic OUT of the main script flow
-    # The logic is now inside the session state initialization OR triggered by the selectbox on_change.
-    # We explicitly call it here only if it's not ready AND the selected course is NOT the empty/default "Select Course".
-    if not st.session_state.get("retriever_ready") and selected_course_name != "Select Course":
-        # This will only be executed on the very first run, assuming the default selection is a valid course.
-        _on_course_change()
+    # The active_url is already managed by the session state and the on_change callback.
+    # No need for redundant logic here.
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -299,7 +311,11 @@ chat_tab, history_tab = st.tabs(["💬 Chat", "📜 History"])
 
 with chat_tab:
     st.markdown('<div class="chat-container"> 💬 AI Course Assistant</div>', unsafe_allow_html=True)
-    st.markdown("Ask intelligent questions about your course content")
+    
+    if st.session_state.get("retriever_ready"):
+        st.markdown(f"Ask intelligent questions about the **{st.session_state.get('selected_course_name')}** content.")
+    else:
+        st.info("Course content is still loading or failed to load. Please wait or check the logs.")
 
     # Show message history
     for msg in st.session_state["messages"]:
@@ -313,9 +329,10 @@ with chat_tab:
         st.markdown(f"<div class='stChatMessage user-msg'>{pending_query}</div>", unsafe_allow_html=True)
 
         if not st.session_state.get("retriever_ready"):
-            st.info("⏳ Loading course content automatically. Please wait a moment and try again.")
+            # This is fine, we just won't try to query the LLM yet
+            st.info("⏳ Please wait for the course content to finish loading before asking a question.")
         elif not groq_api_key:
-            st.stop()
+            st.warning("⚠️ GROQ_API_KEY is missing. Add it to your environment to use the AI assistant.")
         else:
             # Prepare RAG chain
             embeddings = get_embeddings()
@@ -384,14 +401,21 @@ with chat_tab:
 
     # Input row (moved to bottom)
     with st.form(key="chat_form", clear_on_submit=True):
-        user_query = st.text_input("💭 Ask about the course content", placeholder="e.g., What are the prerequisites for this course?")
+        # Disable input if RAG is not ready
+        input_disabled = not st.session_state.get("retriever_ready")
+
+        user_query = st.text_input(
+            "💭 Ask about the course content", 
+            placeholder="e.g., What are the prerequisites for this course?",
+            disabled=input_disabled
+        )
         col1, col2 = st.columns([1, 4])
         with col1:
-            submitted = st.form_submit_button("🚀 Send", type="primary", use_container_width=True)
+            submitted = st.form_submit_button("🚀 Send", type="primary", use_container_width=True, disabled=input_disabled)
         with col2:
             if enable_voice and sr is not None:
                 # Separate submit button that specifically triggers voice capture
-                voice_clicked = st.form_submit_button("🎤 Voice", use_container_width=True)
+                voice_clicked = st.form_submit_button("🎤 Voice", use_container_width=True, disabled=input_disabled)
                 if voice_clicked:
                     recognizer = sr.Recognizer()
                     try:
